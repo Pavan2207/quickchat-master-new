@@ -1,0 +1,3 @@
+@echo off
+set CONVEX_DEPLOY_KEY=eyJ2MiI6ImUyODlkOTVjMWMyZjRlZTFiY2EzMTkxNzU0MzIwMjI2In0=
+npx convex deploy

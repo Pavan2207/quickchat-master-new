@@ -1,0 +1,174 @@
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+// Get all users except the current user
+export const getUsers = query({
+  args: { currentUserId: v.string() },
+  handler: async (ctx, args) => {
+    const users = await ctx.db
+      .query("users")
+      .filter((q) => q.neq(q.field("userId"), args.currentUserId))
+      .collect();
+    return users;
+  },
+});
+
+// Search users by name
+export const searchUsers = query({
+  args: { currentUserId: v.string(), searchQuery: v.string() },
+  handler: async (ctx, args) => {
+    const users = await ctx.db
+      .query("users")
+      .filter((q) => q.neq(q.field("userId"), args.currentUserId))
+      .collect();
+    
+    // Filter by search query in JavaScript (case-insensitive)
+    const query = args.searchQuery.toLowerCase();
+    return users.filter(user => 
+      user.name.toLowerCase().includes(query)
+    );
+  },
+});
+
+// Get or create user profile
+export const getOrCreateUser = mutation({
+  args: { userId: v.string(), name: v.string(), email: v.string(), image: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const existingUser = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (existingUser) {
+      // Update existing user with latest profile information from Clerk
+      await ctx.db.patch(existingUser._id, {
+        name: args.name,
+        email: args.email,
+        image: args.image,
+        isOnline: true,
+        lastSeen: Date.now(),
+      });
+      
+      // Return the updated user
+      return {
+        ...existingUser,
+        name: args.name,
+        email: args.email,
+        image: args.image,
+        isOnline: true,
+        lastSeen: Date.now(),
+      };
+    }
+
+    const userId = await ctx.db.insert("users", {
+      userId: args.userId,
+      name: args.name,
+      email: args.email,
+      image: args.image,
+      isOnline: true,
+      lastSeen: Date.now(),
+      // Default privacy settings
+      showOnlineStatus: true,
+      showLastSeen: true,
+      showReadReceipts: true,
+      allowGroupInvites: true,
+    });
+
+    return { 
+      ...args, 
+      _id: userId, 
+      isOnline: true, 
+      lastSeen: Date.now(),
+      showOnlineStatus: true,
+      showLastSeen: true,
+      showReadReceipts: true,
+      allowGroupInvites: true,
+    };
+  },
+});
+
+// Update user online status
+export const updateOnlineStatus = mutation({
+  args: { userId: v.string(), isOnline: v.boolean() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (user) {
+      await ctx.db.patch(user._id, {
+        isOnline: args.isOnline,
+        lastSeen: Date.now(),
+      });
+    }
+  },
+});
+
+// Get user by ID
+export const getUser = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+    return user;
+  },
+});
+
+// Sync user (alias for getOrCreateUser for backward compatibility)
+export const syncUser = mutation({
+  args: { userId: v.string(), name: v.string(), email: v.string(), image: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const existingUser = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (existingUser) {
+      // Update existing user with latest profile information from Clerk
+      await ctx.db.patch(existingUser._id, {
+        name: args.name,
+        email: args.email,
+        image: args.image,
+        isOnline: true,
+        lastSeen: Date.now(),
+      });
+      
+      // Return the updated user
+      return {
+        ...existingUser,
+        name: args.name,
+        email: args.email,
+        image: args.image,
+        isOnline: true,
+        lastSeen: Date.now(),
+      };
+    }
+
+    const userId = await ctx.db.insert("users", {
+      userId: args.userId,
+      name: args.name,
+      email: args.email,
+      image: args.image,
+      isOnline: true,
+      lastSeen: Date.now(),
+      showOnlineStatus: true,
+      showLastSeen: true,
+      showReadReceipts: true,
+      allowGroupInvites: true,
+    });
+
+    return { 
+      ...args, 
+      _id: userId, 
+      isOnline: true, 
+      lastSeen: Date.now(),
+      showOnlineStatus: true,
+      showLastSeen: true,
+      showReadReceipts: true,
+      allowGroupInvites: true,
+    };
+  },
+});

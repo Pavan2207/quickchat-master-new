@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 
-export default function Settings() {
+export default function Settings({ onClose }: { onClose?: () => void }) {
   const { user } = useUser();
 
   const [settings, setSettings] = useState({
